@@ -6,8 +6,7 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth, db } from "../../lib/firebase";
-import { collection, doc, query, setDoc, where, getDocs } from "firebase/firestore";
-
+import { collection, doc, query, setDoc, where,getDocs } from "firebase/firestore";
 import upload from "../../lib/upload";
 
 const Login = () => {
@@ -37,7 +36,7 @@ const Login = () => {
     // VALIDATE INPUTS
     if (!username || !email || !password)
       return toast.warn("Please enter inputs!");
-    // if (!avatar.file) return toast.warn("Please upload an avatar!");
+    if (!avatar.file) return toast.warn("Please upload an avatar!");
 
     // VALIDATE UNIQUE USERNAME
     const usersRef = collection(db, "users");
