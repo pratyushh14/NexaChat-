@@ -58,23 +58,51 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
-    if (text === "") return;
+    if (text === "" && !img.file) return;
 
     let imgUrl = null;
+    let fileType = null;
 
     try {
       if (img.file) {
         imgUrl = await upload(img.file);
+        fileType = img.file.type.startsWith('image/') ? 'image' : 'file';
       }
 
+      // Create message object
+      const messageData = {
+        senderId: currentUser.id,
+        text: text || "",
+        createdAt: new Date(),
+        ...(imgUrl && { img: imgUrl, fileType, fileName: img.file?.name })
+      };
+
+      // Add message to chat
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({
-          senderId: currentUser.id,
-          text,
-          createdAt: new Date(),
-          ...(imgUrl && { img: imgUrl }),
-        }),
+        messages: arrayUnion(messageData),
       });
+
+      // Update shared media if there's a file
+      if (imgUrl && img.file) {
+        const sharedItem = {
+          url: imgUrl,
+          name: img.file.name,
+          type: fileType,
+          uploadedBy: currentUser.id,
+          uploadedAt: new Date(),
+          size: img.file.size
+        };
+
+        if (fileType === 'image') {
+          await updateDoc(doc(db, "chats", chatId), {
+            sharedPhotos: arrayUnion(sharedItem)
+          });
+        } else {
+          await updateDoc(doc(db, "chats", chatId), {
+            sharedFiles: arrayUnion(sharedItem)
+          });
+        }
+      }
 
       const userIDs = [currentUser.id, user.id];
 
@@ -89,7 +117,7 @@ const Chat = () => {
             (c) => c.chatId === chatId
           );
 
-          userChatsData.chats[chatIndex].lastMessage = text;
+          userChatsData.chats[chatIndex].lastMessage = text || (imgUrl ? "📷 Photo" : "📎 File");
           userChatsData.chats[chatIndex].isSeen =
             id === currentUser.id ? true : false;
           userChatsData.chats[chatIndex].updatedAt = Date.now();
@@ -101,13 +129,13 @@ const Chat = () => {
       });
     } catch (err) {
       console.log(err);
-    } finally{
-    setImg({
-      file: null,
-      url: "",
-    });
+    } finally {
+      setImg({
+        file: null,
+        url: "",
+      });
 
-    setText("");
+      setText("");
     }
   };
 
@@ -136,8 +164,22 @@ const Chat = () => {
             key={message?.createdAt}
           >
             <div className="texts">
-              {message.img && <img src={message.img} alt="" />}
-              <p>{message.text}</p>
+              {message.img && (
+                <div className="media-container">
+                  {message.fileType === 'image' ? (
+                    <img src={message.img} alt="" />
+                  ) : (
+                    <div className="file-preview">
+                      <img src="./file.png" alt="" className="file-icon" />
+                      <span className="file-name">{message.fileName}</span>
+                      <a href={message.img} download className="download-btn">
+                        📥 Download
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+              {message.text && <p>{message.text}</p>}
               <span>{format(message.createdAt.toDate())}</span>
             </div>
           </div>
@@ -161,6 +203,7 @@ const Chat = () => {
             id="file"
             style={{ display: "none" }}
             onChange={handleImg}
+            accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip,.rar"
           />
           <img src="./camera.png" alt="" />
           <img src="./mic.png" alt="" />
@@ -175,6 +218,7 @@ const Chat = () => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={isCurrentUserBlocked || isReceiverBlocked}
+          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
         />
         <div className="emoji">
           <img
@@ -189,7 +233,7 @@ const Chat = () => {
         <button
           className="sendButton"
           onClick={handleSend}
-          disabled={isCurrentUserBlocked || isReceiverBlocked}
+          disabled={isCurrentUserBlocked || isReceiverBlocked || (!text.trim() && !img.file)}
         >
           Send
         </button>
