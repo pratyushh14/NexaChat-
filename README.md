@@ -1,4 +1,5 @@
 # 💬 NexaChat
+https://nexa-chat-seven.vercel.app/
 
 NexaChat is a modern real-time chat application built with **React**, **Firebase**, and **custom UI components**.  
 It offers a sleek interface, real-time messaging, user authentication, and smooth animations for an engaging chat experience.
