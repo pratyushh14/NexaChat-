@@ -2,9 +2,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
 
   .user {
-    padding: 40px 20px;
+    flex-shrink: 0;
+    padding: 30px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -25,8 +29,8 @@
     }
 
     img {
-      width: 100px;
-      height: 100px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       object-fit: cover;
       border: 4px solid #5183fe;
@@ -41,7 +45,7 @@
 
     h2 {
       color: #ffffff;
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 600;
       text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       margin: 0;
@@ -59,14 +63,14 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 220px);
+    min-height: 0;
 
     .scrollable-content {
       flex: 1;
-      padding: 25px 20px 0;
+      padding: 15px 20px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px;
       overflow-y: auto;
 
       /* Custom scrollbar */
@@ -86,16 +90,6 @@
       }
     }
 
-    .button-container {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(17, 25, 40, 0.5);
-      backdrop-filter: blur(10px);
-    }
-
     .option {
       background: linear-gradient(145deg, rgba(30, 40, 60, 0.6), rgba(17, 25, 40, 0.8));
       border-radius: 15px;
@@ -113,7 +107,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 20px;
+        padding: 18px 20px;
         cursor: pointer;
         transition: all 0.3s ease;
 
@@ -128,10 +122,10 @@
         }
 
         img {
-          width: 30px;
-          height: 30px;
+          width: 28px;
+          height: 28px;
           background: rgba(81, 131, 254, 0.2);
-          padding: 8px;
+          padding: 6px;
           border-radius: 50%;
           cursor: pointer;
           transition: all 0.3s ease;
@@ -263,10 +257,10 @@
       .photos, .files {
         display: flex;
         flex-direction: column;
-        gap: 15px;
-        padding: 20px;
+        gap: 12px;
+        padding: 15px 20px 20px;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
-        max-height: 250px;
+        max-height: 180px;
         overflow-y: auto;
 
         &::-webkit-scrollbar {
@@ -287,7 +281,7 @@
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 12px;
+          padding: 10px;
           background: rgba(17, 25, 40, 0.4);
           border-radius: 10px;
           border: 1px solid rgba(255, 255, 255, 0.05);
@@ -302,25 +296,25 @@
           .photoDetail, .fileDetail {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
 
             img {
-              width: 40px;
-              height: 40px;
+              width: 35px;
+              height: 35px;
               border-radius: 5px;
               object-fit: cover;
               border: 1px solid rgba(255, 255, 255, 0.1);
             }
 
             .file-type-icon {
-              width: 40px;
-              height: 40px;
+              width: 35px;
+              height: 35px;
               filter: invert(1);
               opacity: 0.7;
               border: none;
-              border-radius: 8px;
+              border-radius: 6px;
               background: rgba(81, 131, 254, 0.2);
-              padding: 8px;
+              padding: 6px;
             }
 
             .photo-info, .file-info {
@@ -329,34 +323,28 @@
               gap: 2px;
 
               .photo-name, .file-name {
-                font-size: 14px;
+                font-size: 13px;
                 color: #e8f0fe;
                 font-weight: 500;
-                max-width: 150px;
+                max-width: 130px;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
               }
 
               .photo-size, .file-size {
-                font-size: 12px;
+                font-size: 11px;
                 color: #b8c5d1;
                 opacity: 0.7;
               }
             }
-
-            span {
-              font-size: 14px;
-              color: lightgray;
-              font-weight: 300;
-            }
           }
 
           .icon {
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             background: rgba(81, 131, 254, 0.3);
-            padding: 8px;
+            padding: 6px;
             border-radius: 50%;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -375,56 +363,71 @@
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 15px;
-          padding: 40px 20px;
+          gap: 10px;
+          padding: 30px 20px;
           color: #b8c5d1;
 
           .no-media-icon {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             opacity: 0.3;
             filter: invert(1);
           }
 
           p {
-            font-size: 14px;
+            font-size: 13px;
             opacity: 0.6;
             text-align: center;
           }
         }
       }
-    }
 
-    button {
-      padding: 15px;
-      background: linear-gradient(135deg, rgba(230, 74, 105, 0.8), rgba(220, 20, 60, 0.9));
-      color: white;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 15px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(230, 74, 105, 0.3);
+      /* User Actions Content */
+      .user-actions-content {
+        padding: 15px 20px 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
 
-      &:hover {
-        background: linear-gradient(135deg, rgba(220, 20, 60, 0.9), rgba(200, 10, 50, 1));
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(230, 74, 105, 0.5);
-      }
+        .action-button {
+          padding: 12px 15px;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+          transition: all 0.3s ease;
 
-      &:active {
-        transform: translateY(0);
-      }
+          &:hover {
+            transform: translateY(-2px);
+          }
 
-      &.logout {
-        padding: 12px 15px;
-        background: linear-gradient(135deg, #1a73e8, #4285f4);
-        box-shadow: 0 4px 20px rgba(26, 115, 232, 0.3);
+          &:active {
+            transform: translateY(0);
+          }
 
-        &:hover {
-          background: linear-gradient(135deg, #1557b0, #1a73e8);
-          box-shadow: 0 8px 30px rgba(26, 115, 232, 0.5);
+          &.block-button {
+            background: linear-gradient(135deg, rgba(230, 74, 105, 0.8), rgba(220, 20, 60, 0.9));
+            color: white;
+            box-shadow: 0 4px 20px rgba(230, 74, 105, 0.3);
+
+            &:hover {
+              background: linear-gradient(135deg, rgba(220, 20, 60, 0.9), rgba(200, 10, 50, 1));
+              box-shadow: 0 8px 30px rgba(230, 74, 105, 0.5);
+            }
+          }
+
+          &.logout-button {
+            background: linear-gradient(135deg, #1a73e8, #4285f4);
+            color: white;
+            box-shadow: 0 4px 20px rgba(26, 115, 232, 0.3);
+
+            &:hover {
+              background: linear-gradient(135deg, #1557b0, #1a73e8);
+              box-shadow: 0 8px 30px rgba(26, 115, 232, 0.5);
+            }
+          }
         }
       }
     }

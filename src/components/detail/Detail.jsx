@@ -15,7 +15,8 @@ const Detail = () => {
     chatSettings: false,
     privacy: false,
     sharedPhotos: false,
-    sharedFiles: false
+    sharedFiles: false,
+    userActions: false
   });
 
   useEffect(() => {
@@ -229,19 +230,30 @@ const Detail = () => {
               </div>
             )}
           </div>
-        </div>
 
-        <div className="button-container">
-          <button onClick={handleBlock}>
-            {isCurrentUserBlocked
-              ? "You are Blocked!"
-              : isReceiverBlocked
-              ? "User blocked"
-              : "Block User"}
-          </button>
-          <button className="logout" onClick={handleLogout}>
-            Logout
-          </button>
+          <div className="option">
+            <div className="title" onClick={() => toggleSection('userActions')}>
+              <span>User Actions</span>
+              <img 
+                src={expandedSections.userActions ? "./arrowDown.png" : "./arrowUp.png"} 
+                alt="" 
+              />
+            </div>
+            {expandedSections.userActions && (
+              <div className="user-actions-content">
+                <button onClick={handleBlock} className="action-button block-button">
+                  {isCurrentUserBlocked
+                    ? "You are Blocked!"
+                    : isReceiverBlocked
+                    ? "User blocked"
+                    : "Block User"}
+                </button>
+                <button className="action-button logout-button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
