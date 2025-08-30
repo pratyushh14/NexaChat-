@@ -6,7 +6,7 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth, db } from "../../lib/firebase";
-import { collection, doc, query, setDoc, where,getDocs } from "firebase/firestore";
+import { collection, doc, query, setDoc, where, getDocs } from "firebase/firestore";
 import upload from "../../lib/upload";
 
 const Login = () => {
@@ -36,7 +36,6 @@ const Login = () => {
     // VALIDATE INPUTS
     if (!username || !email || !password)
       return toast.warn("Please enter inputs!");
-    if (!avatar.file) return toast.warn("Please upload an avatar!");
 
     // VALIDATE UNIQUE USERNAME
     const usersRef = collection(db, "users");
@@ -49,7 +48,13 @@ const Login = () => {
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
 
-      const imgUrl = await upload(avatar.file);
+      // Use uploaded image or default avatar
+      let imgUrl;
+      if (avatar.file) {
+        imgUrl = await upload(avatar.file);
+      } else {
+        imgUrl = "./avatar.png"; // Default avatar path
+      }
 
       await setDoc(doc(db, "users", res.user.uid), {
         username,

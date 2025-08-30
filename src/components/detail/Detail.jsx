@@ -14,7 +14,7 @@ const Detail = () => {
   const [expandedSections, setExpandedSections] = useState({
     chatSettings: false,
     privacy: false,
-    sharedPhotos: true,
+    sharedPhotos: false,
     sharedFiles: false
   });
 
@@ -81,163 +81,168 @@ const Detail = () => {
         <h2>{user?.username}</h2>
         <p>Online status and info</p>
       </div>
+      
       <div className="info">
-        <div className="option">
-          <div className="title" onClick={() => toggleSection('chatSettings')}>
-            <span>Chat Settings</span>
-            <img 
-              src={expandedSections.chatSettings ? "./arrowDown.png" : "./arrowUp.png"} 
-              alt="" 
-            />
-          </div>
-          {expandedSections.chatSettings && (
-            <div className="settings-content">
-              <div className="setting-item">
-                <span>Notifications</span>
-                <div className="toggle">
-                  <input type="checkbox" id="notifications" defaultChecked />
-                  <label htmlFor="notifications"></label>
-                </div>
-              </div>
-              <div className="setting-item">
-                <span>Message Sound</span>
-                <div className="toggle">
-                  <input type="checkbox" id="messageSound" defaultChecked />
-                  <label htmlFor="messageSound"></label>
-                </div>
-              </div>
-              <div className="setting-item">
-                <span>Auto-download Media</span>
-                <div className="toggle">
-                  <input type="checkbox" id="autoDownload" />
-                  <label htmlFor="autoDownload"></label>
-                </div>
-              </div>
+        <div className="scrollable-content">
+          <div className="option">
+            <div className="title" onClick={() => toggleSection('chatSettings')}>
+              <span>Chat Settings</span>
+              <img 
+                src={expandedSections.chatSettings ? "./arrowDown.png" : "./arrowUp.png"} 
+                alt="" 
+              />
             </div>
-          )}
-        </div>
-
-        <div className="option">
-          <div className="title" onClick={() => toggleSection('privacy')}>
-            <span>Privacy & Help</span>
-            <img 
-              src={expandedSections.privacy ? "./arrowDown.png" : "./arrowUp.png"} 
-              alt="" 
-            />
-          </div>
-          {expandedSections.privacy && (
-            <div className="privacy-content">
-              <div className="privacy-item">
-                <img src="./shield.png" alt="" className="privacy-icon" />
-                <div className="privacy-text">
-                  <span>End-to-End Encryption</span>
-                  <p>Your messages are secured</p>
-                </div>
-              </div>
-              <div className="privacy-item">
-                <img src="./report.png" alt="" className="privacy-icon" />
-                <div className="privacy-text">
-                  <span>Report User</span>
-                  <p>Report inappropriate behavior</p>
-                </div>
-              </div>
-              <div className="privacy-item">
-                <img src="./help.png" alt="" className="privacy-icon" />
-                <div className="privacy-text">
-                  <span>Help Center</span>
-                  <p>Get support and FAQs</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="option">
-          <div className="title" onClick={() => toggleSection('sharedPhotos')}>
-            <span>Shared Photos ({chat?.sharedPhotos?.length || 0})</span>
-            <img 
-              src={expandedSections.sharedPhotos ? "./arrowDown.png" : "./arrowUp.png"} 
-              alt="" 
-            />
-          </div>
-          {expandedSections.sharedPhotos && (
-            <div className="photos">
-              {chat?.sharedPhotos?.length > 0 ? (
-                chat.sharedPhotos.map((photo, index) => (
-                  <div className="photoItem" key={index}>
-                    <div className="photoDetail">
-                      <img src={photo.url} alt="" />
-                      <div className="photo-info">
-                        <span className="photo-name">{photo.name}</span>
-                        <span className="photo-size">{formatFileSize(photo.size)}</span>
-                      </div>
-                    </div>
-                    <img 
-                      src="./download.png" 
-                      alt="" 
-                      className="icon" 
-                      onClick={() => downloadFile(photo.url, photo.name)}
-                    />
+            {expandedSections.chatSettings && (
+              <div className="settings-content">
+                <div className="setting-item">
+                  <span>Notifications</span>
+                  <div className="toggle">
+                    <input type="checkbox" id="notifications" defaultChecked />
+                    <label htmlFor="notifications"></label>
                   </div>
-                ))
-              ) : (
-                <div className="no-media">
-                  <img src="./no-photos.png" alt="" className="no-media-icon" />
-                  <p>No shared photos yet</p>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="option">
-          <div className="title" onClick={() => toggleSection('sharedFiles')}>
-            <span>Shared Files ({chat?.sharedFiles?.length || 0})</span>
-            <img 
-              src={expandedSections.sharedFiles ? "./arrowDown.png" : "./arrowUp.png"} 
-              alt="" 
-            />
-          </div>
-          {expandedSections.sharedFiles && (
-            <div className="files">
-              {chat?.sharedFiles?.length > 0 ? (
-                chat.sharedFiles.map((file, index) => (
-                  <div className="fileItem" key={index}>
-                    <div className="fileDetail">
-                      <img src="./file.png" alt="" className="file-type-icon" />
-                      <div className="file-info">
-                        <span className="file-name">{file.name}</span>
-                        <span className="file-size">{formatFileSize(file.size)}</span>
-                      </div>
-                    </div>
-                    <img 
-                      src="./download.png" 
-                      alt="" 
-                      className="icon" 
-                      onClick={() => downloadFile(file.url, file.name)}
-                    />
+                <div className="setting-item">
+                  <span>Message Sound</span>
+                  <div className="toggle">
+                    <input type="checkbox" id="messageSound" defaultChecked />
+                    <label htmlFor="messageSound"></label>
                   </div>
-                ))
-              ) : (
-                <div className="no-media">
-                  <img src="./no-files.png" alt="" className="no-media-icon" />
-                  <p>No shared files yet</p>
                 </div>
-              )}
+                <div className="setting-item">
+                  <span>Auto-download Media</span>
+                  <div className="toggle">
+                    <input type="checkbox" id="autoDownload" />
+                    <label htmlFor="autoDownload"></label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="option">
+            <div className="title" onClick={() => toggleSection('privacy')}>
+              <span>Privacy & Help</span>
+              <img 
+                src={expandedSections.privacy ? "./arrowDown.png" : "./arrowUp.png"} 
+                alt="" 
+              />
             </div>
-          )}
+            {expandedSections.privacy && (
+              <div className="privacy-content">
+                <div className="privacy-item">
+                  <img src="./shield.png" alt="" className="privacy-icon" />
+                  <div className="privacy-text">
+                    <span>End-to-End Encryption</span>
+                    <p>Your messages are secured</p>
+                  </div>
+                </div>
+                <div className="privacy-item">
+                  <img src="./report.png" alt="" className="privacy-icon" />
+                  <div className="privacy-text">
+                    <span>Report User</span>
+                    <p>Report inappropriate behavior</p>
+                  </div>
+                </div>
+                <div className="privacy-item">
+                  <img src="./help.png" alt="" className="privacy-icon" />
+                  <div className="privacy-text">
+                    <span>Help Center</span>
+                    <p>Get support and FAQs</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="option">
+            <div className="title" onClick={() => toggleSection('sharedPhotos')}>
+              <span>Shared Photos ({chat?.sharedPhotos?.length || 0})</span>
+              <img 
+                src={expandedSections.sharedPhotos ? "./arrowDown.png" : "./arrowUp.png"} 
+                alt="" 
+              />
+            </div>
+            {expandedSections.sharedPhotos && (
+              <div className="photos">
+                {chat?.sharedPhotos?.length > 0 ? (
+                  chat.sharedPhotos.map((photo, index) => (
+                    <div className="photoItem" key={index}>
+                      <div className="photoDetail">
+                        <img src={photo.url} alt="" />
+                        <div className="photo-info">
+                          <span className="photo-name">{photo.name}</span>
+                          <span className="photo-size">{formatFileSize(photo.size)}</span>
+                        </div>
+                      </div>
+                      <img 
+                        src="./download.png" 
+                        alt="" 
+                        className="icon" 
+                        onClick={() => downloadFile(photo.url, photo.name)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-media">
+                    <img src="./no-photos.png" alt="" className="no-media-icon" />
+                    <p>No shared photos yet</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="option">
+            <div className="title" onClick={() => toggleSection('sharedFiles')}>
+              <span>Shared Files ({chat?.sharedFiles?.length || 0})</span>
+              <img 
+                src={expandedSections.sharedFiles ? "./arrowDown.png" : "./arrowUp.png"} 
+                alt="" 
+              />
+            </div>
+            {expandedSections.sharedFiles && (
+              <div className="files">
+                {chat?.sharedFiles?.length > 0 ? (
+                  chat.sharedFiles.map((file, index) => (
+                    <div className="fileItem" key={index}>
+                      <div className="fileDetail">
+                        <img src="./file.png" alt="" className="file-type-icon" />
+                        <div className="file-info">
+                          <span className="file-name">{file.name}</span>
+                          <span className="file-size">{formatFileSize(file.size)}</span>
+                        </div>
+                      </div>
+                      <img 
+                        src="./download.png" 
+                        alt="" 
+                        className="icon" 
+                        onClick={() => downloadFile(file.url, file.name)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-media">
+                    <img src="./no-files.png" alt="" className="no-media-icon" />
+                    <p>No shared files yet</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <button onClick={handleBlock}>
-          {isCurrentUserBlocked
-            ? "You are Blocked!"
-            : isReceiverBlocked
-            ? "User blocked"
-            : "Block User"}
-        </button>
-        <button className="logout" onClick={handleLogout}>
-          Logout
-        </button>
+        <div className="button-container">
+          <button onClick={handleBlock}>
+            {isCurrentUserBlocked
+              ? "You are Blocked!"
+              : isReceiverBlocked
+              ? "User blocked"
+              : "Block User"}
+          </button>
+          <button className="logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );
