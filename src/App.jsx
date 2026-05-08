@@ -4,8 +4,7 @@ import Detail from "./components/detail/Detail";
 import List from "./components/list/List";
 import Login from "./components/login/Login";
 import Notification from "./components/notification/Notification";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./lib/firebase";
+import { supabase } from "./lib/supabase";
 import { useUserStore } from "./lib/userStore";
 import { useChatStore } from "./lib/chatStore";
 
@@ -14,13 +13,13 @@ const App = () => {
   const { chatId } = useChatStore();
 
   useEffect(() => {
-    const unSub = onAuthStateChanged(auth, (user) => {
-      fetchUserInfo(user?.uid);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        fetchUserInfo(session?.user?.id);
+      }
+    );
 
-    return () => {
-      unSub();
-    };
+    return () => subscription.unsubscribe();
   }, [fetchUserInfo]);
 
   if (isLoading) return <div className="loading">Loading...</div>;

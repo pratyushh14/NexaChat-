@@ -1,208 +1,191 @@
 import "./addUser.css";
-import { db } from "../../../../lib/firebase";
-import {
-  arrayUnion,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import { useState } from "react";
+import { supabase } from "../../../../lib/supabase";
+import { useRef, useState } from "react";
 import { useUserStore } from "../../../../lib/userStore";
+import Avatar from "../../../Avatar";
 
-const AddUser = () => {
+const AddUser = ({ onClose }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // useRef so the guard works even before React re-renders the button to disabled
+  const addingRef = useRef(false);
 
   const { currentUser } = useUserStore();
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const username = formData.get("username");
-
-    if (!username.trim()) {
-      setMessage("Please enter a username");
-      return;
-    }
-
-    // Allow adding yourself - removed self-add restriction
-    // This allows single users to access the Detail component with logout button
+    const username = new FormData(e.target).get("username")?.trim();
+    if (!username) { setMessage("Please enter a username"); setIsSuccess(false); return; }
 
     setLoading(true);
     setMessage("");
     setUser(null);
 
     try {
-      const userRef = collection(db, "users");
-      const q = query(userRef, where("username", "==", username));
-      const querySnapShot = await getDocs(q);
+      const { data: foundUser } = await supabase
+        .from("users").select("*").eq("username", username).maybeSingle();
 
-      if (!querySnapShot.empty) {
-        const foundUser = querySnapShot.docs[0].data();
-        
-        // Check if chat already exists
-        const currentUserChatsDoc = await getDoc(doc(db, "userchats", currentUser.id));
-        if (currentUserChatsDoc.exists()) {
-          const currentUserChats = currentUserChatsDoc.data().chats || [];
-          const existingChat = currentUserChats.find(chat => chat.receiverId === foundUser.id);
-          
-          if (existingChat) {
-            setMessage("Chat already exists with this user");
-            setUser(null);
-          } else {
-            setUser(foundUser);
-            setMessage("");
-          }
-        } else {
-          setUser(foundUser);
-          setMessage("");
-        }
-      } else {
+      if (!foundUser) {
         setMessage("User not found");
-        setUser(null);
+        setIsSuccess(false);
+        return;
+      }
+
+      // Prevent adding yourself
+      if (foundUser.id === currentUser.id) {
+        setMessage("You can't add yourself!");
+        setIsSuccess(false);
+        return;
+      }
+
+      // Check if chat already exists (fresh DB fetch)
+      const { data: myChats } = await supabase
+        .from("user_chats").select("chats").eq("user_id", currentUser.id).single();
+
+      const alreadyExists = (myChats?.chats || []).some(c => c.receiverId === foundUser.id);
+      if (alreadyExists) {
+        setMessage("You already have a chat with this user");
+        setIsSuccess(false);
+      } else {
+        setUser(foundUser);
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setMessage("Error searching for user");
-      setUser(null);
+      setIsSuccess(false);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAdd = async () => {
-    if (!user || adding) return; // Prevent multiple simultaneous adds
-
+    // Use ref for instant guard (state batches, ref doesn't)
+    if (!user || addingRef.current) return;
+    addingRef.current = true;
     setAdding(true);
-    const chatRef = collection(db, "chats");
-    const userChatsRef = collection(db, "userchats");
 
     try {
-      // Double-check if chat already exists before adding
-      const currentUserChatsDoc = await getDoc(doc(userChatsRef, currentUser.id));
-      if (currentUserChatsDoc.exists()) {
-        const currentUserChats = currentUserChatsDoc.data().chats || [];
-        const existingChat = currentUserChats.find(chat => chat.receiverId === user.id);
-        
-        if (existingChat) {
-          setMessage("Chat already exists with this user");
-          setUser(null);
-          setAdding(false);
-          return;
-        }
+      // Fresh DB check to prevent race-condition duplicates
+      const { data: myCurrentChats } = await supabase
+        .from("user_chats").select("chats").eq("user_id", currentUser.id).single();
+
+      const alreadyExists = (myCurrentChats?.chats || []).some(c => c.receiverId === user.id);
+      if (alreadyExists) {
+        setMessage("Chat already exists with this user");
+        setIsSuccess(false);
+        setUser(null);
+        return;
       }
 
-      // Create new chat document
-      const newChatRef = doc(chatRef);
-      await setDoc(newChatRef, {
-        createdAt: serverTimestamp(),
-        messages: [],
-        sharedPhotos: [],
-        sharedFiles: [],
-      });
+      // Create the chat row
+      const { data: newChat, error: chatErr } = await supabase
+        .from("chats")
+        .insert({ messages: [], shared_photos: [], shared_files: [] })
+        .select("id").single();
+      if (chatErr) throw chatErr;
 
       const chatData = {
-        chatId: newChatRef.id,
+        chatId: newChat.id,
         lastMessage: "",
         updatedAt: Date.now(),
         isSeen: false,
       };
 
-      // Add chat to user's chat list (they receive from current user)
-      const userChatsDoc = await getDoc(doc(userChatsRef, user.id));
-      if (userChatsDoc.exists()) {
-        const userChats = userChatsDoc.data().chats || [];
-        // Check if chat already exists in their list
-        const existingUserChat = userChats.find(chat => chat.receiverId === currentUser.id);
-        if (!existingUserChat) {
-          await updateDoc(doc(userChatsRef, user.id), {
-            chats: [...userChats, { ...chatData, receiverId: currentUser.id }],
-          });
-        }
+      // Add to receiver's user_chats
+      const { data: otherChats } = await supabase
+        .from("user_chats").select("chats").eq("user_id", user.id).single();
+
+      // Deduplicate before updating (safety net)
+      const otherExisting = (otherChats?.chats || []).filter(c => c.receiverId !== currentUser.id);
+      const otherUpdated = [...otherExisting, { ...chatData, receiverId: currentUser.id }];
+
+      if (otherChats) {
+        await supabase.from("user_chats")
+          .update({ chats: otherUpdated })
+          .eq("user_id", user.id);
       } else {
-        await setDoc(doc(userChatsRef, user.id), {
-          chats: [{ ...chatData, receiverId: currentUser.id }],
-        });
+        await supabase.from("user_chats")
+          .insert({ user_id: user.id, chats: [{ ...chatData, receiverId: currentUser.id }] });
       }
 
-      // Add chat to current user's chat list (they send to user)
-      const currentUserChatsDocRefresh = await getDoc(doc(userChatsRef, currentUser.id));
-      if (currentUserChatsDocRefresh.exists()) {
-        const currentUserChats = currentUserChatsDocRefresh.data().chats || [];
-        // Check if chat already exists in current user's list
-        const existingCurrentUserChat = currentUserChats.find(chat => chat.receiverId === user.id);
-        if (!existingCurrentUserChat) {
-          await updateDoc(doc(userChatsRef, currentUser.id), {
-            chats: [...currentUserChats, { ...chatData, receiverId: user.id, isSeen: true }],
-          });
-        }
+      // Add to my user_chats (fetch fresh again to avoid stale data)
+      const { data: freshMyChats } = await supabase
+        .from("user_chats").select("chats").eq("user_id", currentUser.id).single();
+
+      const myExisting = (freshMyChats?.chats || []).filter(c => c.receiverId !== user.id);
+      const myUpdated = [...myExisting, { ...chatData, receiverId: user.id, isSeen: true }];
+
+      if (freshMyChats) {
+        await supabase.from("user_chats")
+          .update({ chats: myUpdated })
+          .eq("user_id", currentUser.id);
       } else {
-        await setDoc(doc(userChatsRef, currentUser.id), {
-          chats: [{ ...chatData, receiverId: user.id, isSeen: true }],
-        });
+        await supabase.from("user_chats")
+          .insert({ user_id: currentUser.id, chats: [{ ...chatData, receiverId: user.id, isSeen: true }] });
       }
 
-      setMessage("User added successfully!");
+      setIsSuccess(true);
+      setMessage("Added successfully!");
       setUser(null);
-      
-      // Clear the form
-      const form = document.querySelector('form');
-      if (form) {
-        form.reset();
-      }
-
-      // Clear success message after 2 seconds
-      setTimeout(() => {
-        setMessage("");
-      }, 2000);
-
+      setTimeout(() => { setMessage(""); onClose?.(); }, 1200);
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setMessage("Error adding user");
+      setIsSuccess(false);
     } finally {
+      addingRef.current = false;
       setAdding(false);
     }
   };
 
   return (
-    <div className="addUser">
-      <form onSubmit={handleSearch}>
-        <input 
-          type="text" 
-          placeholder="Username" 
-          name="username"
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Searching..." : "Search"}
-        </button>
-      </form>
-
-      {message && (
-        <div className={`message ${message.includes("successfully") ? "success" : "error"}`}>
-          {message}
+    <div className="addUserOverlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+      <div className="addUserBox">
+        <div className="addUserHeader">
+          <h3>Add Contact</h3>
+          <button className="closeBtn" onClick={onClose}>✕</button>
         </div>
-      )}
 
-      {user && (
-        <div className="user">
-          <div className="detail">
-            <img src={user.avatar || "./avatar.png"} alt="" />
-            <span>{user.username}</span>
+        <form onSubmit={handleSearch}>
+          <div className="inputRow">
+            <input
+              type="text"
+              placeholder="Search by username…"
+              name="username"
+              disabled={loading}
+              autoFocus
+            />
+            <button type="submit" disabled={loading}>
+              {loading ? "…" : "Search"}
+            </button>
           </div>
-          <button onClick={handleAdd} disabled={adding}>
-            {adding ? "Adding..." : "Add User"}
-          </button>
-        </div>
-      )}
+        </form>
+
+        {message && (
+          <div className={`msg ${isSuccess ? "success" : "error"}`}>
+            {isSuccess ? "✓" : "✕"} {message}
+          </div>
+        )}
+
+        {user && (
+          <div className="foundUser">
+            <div className="foundUserInfo">
+              <Avatar src={user.avatar} username={user.username} size={44} />
+              <div>
+                <span className="foundName">{user.username}</span>
+                <span className="foundEmail">{user.email}</span>
+              </div>
+            </div>
+            <button className="addBtn" onClick={handleAdd} disabled={adding}>
+              {adding ? "Adding…" : "Add"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

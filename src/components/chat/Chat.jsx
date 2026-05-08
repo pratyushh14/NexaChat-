@@ -1,31 +1,52 @@
 import { useEffect, useRef, useState } from "react";
 import "./chat.css";
 import EmojiPicker from "emoji-picker-react";
-import {
-  arrayUnion,
-  doc,
-  getDoc,
-  onSnapshot,
-  updateDoc,
-} from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { toast } from "react-toastify";
+import { supabase } from "../../lib/supabase";
 import { useChatStore } from "../../lib/chatStore";
 import { useUserStore } from "../../lib/userStore";
 import upload from "../../lib/upload";
 import { format } from "timeago.js";
+import Avatar from "../Avatar";
+
+// Returns an emoji icon and label based on file extension
+const getFileInfo = (fileName = "") => {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const map = {
+    pdf:  { icon: "📄", label: "PDF" },
+    doc:  { icon: "📝", label: "Word" },
+    docx: { icon: "📝", label: "Word" },
+    xls:  { icon: "📊", label: "Excel" },
+    xlsx: { icon: "📊", label: "Excel" },
+    csv:  { icon: "📊", label: "CSV" },
+    ppt:  { icon: "📑", label: "PowerPoint" },
+    pptx: { icon: "📑", label: "PowerPoint" },
+    zip:  { icon: "🗜️", label: "Archive" },
+    rar:  { icon: "🗜️", label: "Archive" },
+    txt:  { icon: "📃", label: "Text" },
+    mp3:  { icon: "🎵", label: "Audio" },
+    wav:  { icon: "🎵", label: "Audio" },
+    mp4:  { icon: "🎬", label: "Video" },
+    mov:  { icon: "🎬", label: "Video" },
+  };
+  return map[ext] || { icon: "📎", label: ext?.toUpperCase() || "File" };
+};
+
+const formatBytes = (bytes) => {
+  if (!bytes) return "";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1048576).toFixed(1) + " MB";
+};
 
 const Chat = () => {
   const [chat, setChat] = useState();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [img, setImg] = useState({
-    file: null,
-    url: "",
-  });
+  const [img, setImg] = useState({ file: null, url: "" });
 
   const { currentUser } = useUserStore();
-  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } =
-    useChatStore();
+  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
 
   const endRef = useRef(null);
 
@@ -34,13 +55,30 @@ const Chat = () => {
   }, [chat?.messages]);
 
   useEffect(() => {
-    const unSub = onSnapshot(doc(db, "chats", chatId), (res) => {
-      setChat(res.data());
-    });
+    if (!chatId) return;
 
-    return () => {
-      unSub();
+    // Initial fetch
+    const fetchChat = async () => {
+      const { data } = await supabase
+        .from("chats")
+        .select("*")
+        .eq("id", chatId)
+        .single();
+      if (data) setChat(data);
     };
+    fetchChat();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel(`chat-${chatId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "chats", filter: `id=eq.${chatId}` },
+        (payload) => { setChat(payload.new); }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, [chatId]);
 
   const handleEmoji = (e) => {
@@ -65,76 +103,79 @@ const Chat = () => {
 
     try {
       if (img.file) {
-        imgUrl = await upload(img.file);
-        fileType = img.file.type.startsWith('image/') ? 'image' : 'file';
+        try {
+          imgUrl = await upload(img.file);
+          fileType = img.file.type.startsWith("image/") ? "image" : "file";
+        } catch (uploadErr) {
+          console.error(uploadErr);
+          toast.error("Image upload failed. Make sure the 'chat-images' bucket exists in Supabase Storage.");
+          setImg({ file: null, url: "" });
+          return;
+        }
       }
 
-      // Create message object
       const messageData = {
         senderId: currentUser.id,
         text: text || "",
-        createdAt: new Date(),
-        ...(imgUrl && { img: imgUrl, fileType, fileName: img.file?.name })
+        createdAt: new Date().toISOString(),
+        ...(imgUrl && { img: imgUrl, fileType, fileName: img.file?.name, fileSize: img.file?.size }),
       };
 
-      // Add message to chat
-      await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion(messageData),
-      });
+      // Fetch current chat state
+      const { data: currentChat } = await supabase
+        .from("chats")
+        .select("*")
+        .eq("id", chatId)
+        .single();
 
-      // Update shared media if there's a file
+      const updatedMessages = [...(currentChat.messages || []), messageData];
+      let updatePayload = { messages: updatedMessages };
+
       if (imgUrl && img.file) {
         const sharedItem = {
           url: imgUrl,
           name: img.file.name,
           type: fileType,
           uploadedBy: currentUser.id,
-          uploadedAt: new Date(),
-          size: img.file.size
+          uploadedAt: new Date().toISOString(),
+          size: img.file.size,
         };
-
-        if (fileType === 'image') {
-          await updateDoc(doc(db, "chats", chatId), {
-            sharedPhotos: arrayUnion(sharedItem)
-          });
+        if (fileType === "image") {
+          updatePayload.shared_photos = [...(currentChat.shared_photos || []), sharedItem];
         } else {
-          await updateDoc(doc(db, "chats", chatId), {
-            sharedFiles: arrayUnion(sharedItem)
-          });
+          updatePayload.shared_files = [...(currentChat.shared_files || []), sharedItem];
         }
       }
 
+      await supabase.from("chats").update(updatePayload).eq("id", chatId);
+
+      // Update user_chats for both users
       const userIDs = [currentUser.id, user.id];
+      for (const id of userIDs) {
+        const { data: userChatsData } = await supabase
+          .from("user_chats")
+          .select("chats")
+          .eq("user_id", id)
+          .single();
 
-      userIDs.forEach(async (id) => {
-        const userChatsRef = doc(db, "userchats", id);
-        const userChatsSnapshot = await getDoc(userChatsRef);
-
-        if (userChatsSnapshot.exists()) {
-          const userChatsData = userChatsSnapshot.data();
-
-          const chatIndex = userChatsData.chats.findIndex(
-            (c) => c.chatId === chatId
-          );
-
-          userChatsData.chats[chatIndex].lastMessage = text || (imgUrl ? "📷 Photo" : "📎 File");
-          userChatsData.chats[chatIndex].isSeen =
-            id === currentUser.id ? true : false;
-          userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-          await updateDoc(userChatsRef, {
-            chats: userChatsData.chats,
-          });
+        if (userChatsData) {
+          const userChats = [...(userChatsData.chats || [])];
+          const chatIndex = userChats.findIndex((c) => c.chatId === chatId);
+          if (chatIndex !== -1) {
+            userChats[chatIndex].lastMessage = text || (imgUrl ? "📷 Photo" : "📎 File");
+            userChats[chatIndex].isSeen = id === currentUser.id ? true : false;
+            userChats[chatIndex].updatedAt = Date.now();
+            await supabase
+              .from("user_chats")
+              .update({ chats: userChats })
+              .eq("user_id", id);
+          }
         }
-      });
+      }
     } catch (err) {
       console.log(err);
     } finally {
-      setImg({
-        file: null,
-        url: "",
-      });
-
+      setImg({ file: null, url: "" });
       setText("");
     }
   };
@@ -143,10 +184,15 @@ const Chat = () => {
     <div className="chat">
       <div className="top">
         <div className="user">
-          <img src={user?.avatar || "./avatar.png"} alt="" />
+          <Avatar
+            src={user?.avatar}
+            username={user?.username}
+            size={48}
+            style={{ border: "2.5px solid #5183fe", boxShadow: "0 4px 20px rgba(81,131,254,0.4)" }}
+          />
           <div className="texts">
             <span>{user?.username}</span>
-            <p>Lorem ipsum dolor, sit amet.</p>
+            <p>{isCurrentUserBlocked || isReceiverBlocked ? "Blocked" : "Click to view profile"}</p>
           </div>
         </div>
         <div className="icons">
@@ -158,29 +204,44 @@ const Chat = () => {
       <div className="center">
         {chat?.messages?.map((message) => (
           <div
-            className={
-              message.senderId === currentUser?.id ? "message own" : "message"
-            }
+            className={message.senderId === currentUser?.id ? "message own" : "message"}
             key={message?.createdAt}
           >
             <div className="texts">
               {message.img && (
                 <div className="media-container">
-                  {message.fileType === 'image' ? (
+                  {message.fileType === "image" ? (
                     <img src={message.img} alt="" />
                   ) : (
                     <div className="file-preview">
-                      <img src="./file.png" alt="" className="file-icon" />
-                      <span className="file-name">{message.fileName}</span>
-                      <a href={message.img} download className="download-btn">
-                        📥 Download
+                      <div className="file-preview-top">
+                        <span className="file-emoji">
+                          {getFileInfo(message.fileName).icon}
+                        </span>
+                        <div className="file-meta">
+                          <span className="file-name">{message.fileName || "File"}</span>
+                          <span className="file-type-label">
+                            {getFileInfo(message.fileName).label}
+                            {message.fileSize ? " · " + formatBytes(message.fileSize) : ""}
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={message.img}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                        className="download-btn"
+                      >
+                        <img src="./download.png" alt="" />
+                        Download
                       </a>
                     </div>
                   )}
                 </div>
               )}
               {message.text && <p>{message.text}</p>}
-              <span>{format(message.createdAt.toDate())}</span>
+              <span>{format(new Date(message.createdAt))}</span>
             </div>
           </div>
         ))}
@@ -218,14 +279,10 @@ const Chat = () => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={isCurrentUserBlocked || isReceiverBlocked}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+          onKeyPress={(e) => e.key === "Enter" && handleSend()}
         />
         <div className="emoji">
-          <img
-            src="./emoji.png"
-            alt=""
-            onClick={() => setOpen((prev) => !prev)}
-          />
+          <img src="./emoji.png" alt="" onClick={() => setOpen((prev) => !prev)} />
           <div className="picker">
             <EmojiPicker open={open} onEmojiClick={handleEmoji} />
           </div>

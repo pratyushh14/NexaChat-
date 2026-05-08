@@ -1,30 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
-    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
+  font-family: 'Inter', sans-serif;
 }
-body{
-  background-image: url("/bg.jpg");
+
+body {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(88, 80, 236, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, rgba(56, 120, 255, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 60% 40%, rgba(120, 80, 220, 0.08) 0%, transparent 50%),
+    linear-gradient(160deg, #080c18 0%, #0c1220 45%, #080f1c 100%);
   display: flex;
   align-items: center;
   height: 100vh;
   justify-content: center;
   color: white;
+  overflow: hidden;
 }
-.container{
-  width:80vw;
-  height: 90vh;
-  background-color: rgb(17,25,40,0.75);
-  backdrop-filter: blur(19px) saturate(180%);
-  border-radius: 12px;
-  border:1px solid rgba(255,255,255,0.125);
+
+/* Subtle noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  width: 88vw;
+  height: 92vh;
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  overflow: hidden;
 }
-.loading{
-  padding: 50px;
-  font-size: 36px;
-  border-radius: 10px;
-  background-color: rgb(17,25,40,0.9);
+
+.loading {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 36px 60px;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(160, 180, 220, 0.8);
+  border-radius: 16px;
+  background: rgba(10, 14, 26, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.2px;
+}
+
+.loading::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(81, 131, 254, 0.25);
+  border-top-color: #5183fe;
+  border-radius: 50%;
+  animation: globalSpin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes globalSpin {
+  to { transform: rotate(360deg); }
 }

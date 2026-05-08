@@ -1,9 +1,9 @@
-import { arrayRemove, arrayUnion, doc, updateDoc, onSnapshot } from "firebase/firestore";
 import { useChatStore } from "../../lib/chatStore";
-import { auth, db } from "../../lib/firebase";
+import { supabase } from "../../lib/supabase";
 import { useUserStore } from "../../lib/userStore";
 import { useEffect, useState } from "react";
 import "./detail.css";
+import Avatar from "../Avatar";
 
 const Detail = () => {
   const { chatId, user, isCurrentUserBlocked, isReceiverBlocked, changeBlock, resetChat } =
@@ -16,58 +16,80 @@ const Detail = () => {
     privacy: false,
     sharedPhotos: false,
     sharedFiles: false,
-    userActions: false
+    userActions: false,
   });
 
   useEffect(() => {
-    if (chatId) {
-      const unSub = onSnapshot(doc(db, "chats", chatId), (res) => {
-        setChat(res.data());
-      });
+    if (!chatId) return;
 
-      return () => {
-        unSub();
-      };
-    }
+    const fetchChat = async () => {
+      const { data } = await supabase
+        .from("chats")
+        .select("*")
+        .eq("id", chatId)
+        .single();
+      if (data) setChat(data);
+    };
+    fetchChat();
+
+    const channel = supabase
+      .channel(`detail-${chatId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "chats", filter: `id=eq.${chatId}` },
+        (payload) => { setChat(payload.new); }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, [chatId]);
 
   const handleBlock = async () => {
     if (!user) return;
 
-    const userDocRef = doc(db, "users", currentUser.id);
+    const { data: userData } = await supabase
+      .from("users")
+      .select("blocked")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (!userData) return;
+
+    const currentBlocked = userData.blocked || [];
+    const newBlocked = isReceiverBlocked
+      ? currentBlocked.filter((id) => id !== user.id)
+      : [...currentBlocked, user.id];
 
     try {
-      await updateDoc(userDocRef, {
-        blocked: isReceiverBlocked ? arrayRemove(user.id) : arrayUnion(user.id),
-      });
+      await supabase
+        .from("users")
+        .update({ blocked: newBlocked })
+        .eq("id", currentUser.id);
       changeBlock();
     } catch (err) {
       console.log(err);
     }
   };
 
-  const handleLogout = () => {
-    auth.signOut();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     resetChat();
   };
 
   const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
   const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   const downloadFile = (url, filename) => {
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
@@ -78,20 +100,26 @@ const Detail = () => {
   return (
     <div className="detail">
       <div className="user">
-        <img src={user?.avatar || "./avatar.png"} alt="" />
+        <Avatar
+          src={user?.avatar}
+          username={user?.username}
+          size={84}
+          style={{
+            border: "3px solid rgba(81, 131, 254, 0.65)",
+            boxShadow: "0 8px 28px rgba(81, 131, 254, 0.35)",
+            fontSize: 32,
+          }}
+        />
         <h2>{user?.username}</h2>
         <p>Online status and info</p>
       </div>
-      
+
       <div className="info">
         <div className="scrollable-content">
           <div className="option">
-            <div className="title" onClick={() => toggleSection('chatSettings')}>
+            <div className="title" onClick={() => toggleSection("chatSettings")}>
               <span>Chat Settings</span>
-              <img 
-                src={expandedSections.chatSettings ? "./arrowDown.png" : "./arrowUp.png"} 
-                alt="" 
-              />
+              <img src={expandedSections.chatSettings ? "./arrowDown.png" : "./arrowUp.png"} alt="" />
             </div>
             {expandedSections.chatSettings && (
               <div className="settings-content">
@@ -121,12 +149,9 @@ const Detail = () => {
           </div>
 
           <div className="option">
-            <div className="title" onClick={() => toggleSection('privacy')}>
-              <span>Privacy & Help</span>
-              <img 
-                src={expandedSections.privacy ? "./arrowDown.png" : "./arrowUp.png"} 
-                alt="" 
-              />
+            <div className="title" onClick={() => toggleSection("privacy")}>
+              <span>Privacy &amp; Help</span>
+              <img src={expandedSections.privacy ? "./arrowDown.png" : "./arrowUp.png"} alt="" />
             </div>
             {expandedSections.privacy && (
               <div className="privacy-content">
@@ -156,17 +181,14 @@ const Detail = () => {
           </div>
 
           <div className="option">
-            <div className="title" onClick={() => toggleSection('sharedPhotos')}>
-              <span>Shared Photos ({chat?.sharedPhotos?.length || 0})</span>
-              <img 
-                src={expandedSections.sharedPhotos ? "./arrowDown.png" : "./arrowUp.png"} 
-                alt="" 
-              />
+            <div className="title" onClick={() => toggleSection("sharedPhotos")}>
+              <span>Shared Photos ({chat?.shared_photos?.length || 0})</span>
+              <img src={expandedSections.sharedPhotos ? "./arrowDown.png" : "./arrowUp.png"} alt="" />
             </div>
             {expandedSections.sharedPhotos && (
               <div className="photos">
-                {chat?.sharedPhotos?.length > 0 ? (
-                  chat.sharedPhotos.map((photo, index) => (
+                {chat?.shared_photos?.length > 0 ? (
+                  chat.shared_photos.map((photo, index) => (
                     <div className="photoItem" key={index}>
                       <div className="photoDetail">
                         <img src={photo.url} alt="" />
@@ -175,10 +197,10 @@ const Detail = () => {
                           <span className="photo-size">{formatFileSize(photo.size)}</span>
                         </div>
                       </div>
-                      <img 
-                        src="./download.png" 
-                        alt="" 
-                        className="icon" 
+                      <img
+                        src="./download.png"
+                        alt=""
+                        className="icon"
                         onClick={() => downloadFile(photo.url, photo.name)}
                       />
                     </div>
@@ -194,17 +216,14 @@ const Detail = () => {
           </div>
 
           <div className="option">
-            <div className="title" onClick={() => toggleSection('sharedFiles')}>
-              <span>Shared Files ({chat?.sharedFiles?.length || 0})</span>
-              <img 
-                src={expandedSections.sharedFiles ? "./arrowDown.png" : "./arrowUp.png"} 
-                alt="" 
-              />
+            <div className="title" onClick={() => toggleSection("sharedFiles")}>
+              <span>Shared Files ({chat?.shared_files?.length || 0})</span>
+              <img src={expandedSections.sharedFiles ? "./arrowDown.png" : "./arrowUp.png"} alt="" />
             </div>
             {expandedSections.sharedFiles && (
               <div className="files">
-                {chat?.sharedFiles?.length > 0 ? (
-                  chat.sharedFiles.map((file, index) => (
+                {chat?.shared_files?.length > 0 ? (
+                  chat.shared_files.map((file, index) => (
                     <div className="fileItem" key={index}>
                       <div className="fileDetail">
                         <img src="./file.png" alt="" className="file-type-icon" />
@@ -213,10 +232,10 @@ const Detail = () => {
                           <span className="file-size">{formatFileSize(file.size)}</span>
                         </div>
                       </div>
-                      <img 
-                        src="./download.png" 
-                        alt="" 
-                        className="icon" 
+                      <img
+                        src="./download.png"
+                        alt=""
+                        className="icon"
                         onClick={() => downloadFile(file.url, file.name)}
                       />
                     </div>
@@ -232,21 +251,14 @@ const Detail = () => {
           </div>
 
           <div className="option">
-            <div className="title" onClick={() => toggleSection('userActions')}>
+            <div className="title" onClick={() => toggleSection("userActions")}>
               <span>User Actions</span>
-              <img 
-                src={expandedSections.userActions ? "./arrowDown.png" : "./arrowUp.png"} 
-                alt="" 
-              />
+              <img src={expandedSections.userActions ? "./arrowDown.png" : "./arrowUp.png"} alt="" />
             </div>
             {expandedSections.userActions && (
               <div className="user-actions-content">
                 <button onClick={handleBlock} className="action-button block-button">
-                  {isCurrentUserBlocked
-                    ? "You are Blocked!"
-                    : isReceiverBlocked
-                    ? "User blocked"
-                    : "Block User"}
+                  {isCurrentUserBlocked ? "You are Blocked!" : isReceiverBlocked ? "User blocked" : "Block User"}
                 </button>
                 <button className="action-button logout-button" onClick={handleLogout}>
                   Logout

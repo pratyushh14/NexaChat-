@@ -1,64 +1,210 @@
-.addUser{
-    width: max-content;
-    height: max-content;
-    padding: 30px;
-    background-color:rgba(17,25,40,0.8) ;
-    border-radius: 10px;
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: auto;
-
-    form{
-        display: flex;
-        gap: 20px;
-
-        input{
-            padding: 20px;
-            border-radius: 10px;
-            border: none;
-            outline: none;
-        }
-
-        button{
-            padding: 20px;
-            border-radius: 10px;
-            background-color:#1a73e8 ;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-    }
-    .user{
-        margin-top: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-
-
-        .detail{
-             display: flex;
-        align-items: center;
-        gap: 20px;
-            img{
-                width: 50px;
-                height: 50px;
-                border-radius: 50%;
-                object-fit: cover;
-
-            }
-        }
-        button{
-            padding: 10px;
-            border-radius: 10px;
-            background-color:#1a73e8 ;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-    }
-
+/* Full-screen backdrop */
+.addUserOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: backdropIn 0.2s ease;
 }
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Modal box */
+.addUserBox {
+  width: 420px;
+  background: rgba(12, 18, 32, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Header */
+.addUserHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.addUserHeader h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+
+.closeBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.closeBtn:hover {
+  background: rgba(220, 50, 50, 0.2);
+  color: #ff7070;
+}
+
+/* Search input row */
+.inputRow {
+  display: flex;
+  gap: 10px;
+}
+
+.inputRow input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 11px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  outline: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inputRow input::placeholder { color: rgba(255,255,255,0.3); }
+
+.inputRow input:focus {
+  border-color: rgba(81,131,254,0.6);
+  box-shadow: 0 0 0 3px rgba(81,131,254,0.15);
+}
+
+.inputRow input:disabled { opacity: 0.5; }
+
+.inputRow button[type="submit"] {
+  padding: 12px 20px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #5183fe, #7c6af7);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 4px 14px rgba(81,131,254,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.inputRow button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(81,131,254,0.5);
+}
+
+.inputRow button[type="submit"]:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Status message */
+.msg {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeUp 0.2s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.msg.success {
+  background: rgba(52, 199, 89, 0.14);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+  color: #6ee79a;
+}
+
+.msg.error {
+  background: rgba(255, 59, 48, 0.12);
+  border: 1px solid rgba(255, 59, 48, 0.28);
+  color: #ff8a80;
+}
+
+/* Found user card */
+.foundUser {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  animation: fadeUp 0.2s ease;
+  gap: 12px;
+}
+
+.foundUserInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.foundName {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.foundEmail {
+  display: block;
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.addBtn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5183fe, #7c6af7);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 4px 14px rgba(81,131,254,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.addBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(81,131,254,0.5);
+}
+
+.addBtn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }

@@ -1,5 +1,12 @@
-.list{
-      flex:1;
-      display: flex;
-        flex-direction: column;  
-    }
+.list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;     /* prevent overflow */
+  min-width: 0;
+  max-width: 300px;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.75), rgba(12, 18, 32, 0.85));
+  overflow: hidden;
+}
