@@ -98,8 +98,10 @@ src/
 ## 🖼️ Screenshots
 
 > Login Page — Aurora canvas animation with floating chat bubbles
+<img width="1168" height="671" alt="image" src="https://github.com/user-attachments/assets/3032e1b6-f890-409b-83af-4423701348bc" />
 
 > Chat Interface — WhatsApp-style header, glassmorphism bubbles, file previews
+<img width="1202" height="686" alt="image" src="https://github.com/user-attachments/assets/2929b4cb-3a57-463f-8b34-688b215ff9b8" />
 
 ---
 
